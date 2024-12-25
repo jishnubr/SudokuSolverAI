@@ -1,77 +1,80 @@
 import random
+from Algorithms import hybrid_sudoku_solver, is_valid
 
-from HybridSolver import backtracking_with_optimizations, constraint_propagation, dancing_links_algorithm, stochastic_search
+def generate_shuffled_board():
+    base = 3
+    side = base * base
 
-def is_valid(board, row, col, num):
-    for i in range(9):
-        if board[row][i] == num or board[i][col] == num:
-            return False
-    start_row = 3 * (row // 3)
-    start_col = 3 * (col // 3)
-    for i in range(start_row, start_row + 3):
-        for j in range(start_col, start_col + 3):
-            if board[i][j] == num:
-                return False
-    return True
-def print_board(board):
-    for row in board:
-        print(" ".join(str(num) if num != 0 else '.' for num in row))
+    # Pattern for a baseline valid solution
+    def pattern(r, c): return (base * (r % base) + r // base + c) % side
 
-def solve_sudoku(board):
-    for row in range(9):
-        for col in range(9):
-            if board[row][col] == 0:
-                for num in range(1, 10):
-                    if is_valid(board, row, col, num):
-                        board[row][col] = num
-                        if solve_sudoku(board):
-                            return True
-                        board[row][col] = 0
-                return False
-    return True
+    # Randomize rows, columns, and numbers (of valid base pattern)
+    def shuffle(s): return random.sample(s, len(s))
 
-def generate_complete_board():
-    board = [[0] * 9 for _ in range(9)]
-    solve_sudoku(board)
+    r_base = range(base)
+    rows = [g * base + r for g in shuffle(r_base) for r in shuffle(r_base)]
+    cols = [g * base + c for g in shuffle(r_base) for c in shuffle(r_base)]
+    nums = shuffle(range(1, base * base + 1))
+
+    # Produce board using randomized baseline pattern
+    board = [[nums[pattern(r, c)] for c in cols] for r in rows]
+
     return board
-def remove_numbers_from_board(board, difficulty_level):
-    attempts = difficulty_level
-    while attempts > 0:
+
+def count_solutions(board):
+    solutions = []
+    def hybrid_sudoku_solver(board):
+        for row in range(9):
+            for col in range(9):
+                if board[row][col] == 0:
+                    for num in range(1, 10):
+                        if is_valid(board, row, col, num):
+                            board[row][col] = num
+                            hybrid_sudoku_solver(board)
+                            board[row][col] = 0
+                    return
+        solutions.append([row[:] for row in board])
+
+    hybrid_sudoku_solver(board)
+    return len(solutions)
+
+def remove_numbers_from_board(board, difficulty_level, max_attempts=100):
+    attempts = 0
+    removed_positions = []
+
+    while attempts < difficulty_level and len(removed_positions) < 81:
         row = random.randint(0, 8)
         col = random.randint(0, 8)
         while board[row][col] == 0:
             row = random.randint(0, 8)
             col = random.randint(0, 8)
+        
         backup = board[row][col]
         board[row][col] = 0
 
-        # Make a copy of the board to test if it still has a unique solution
-        board_copy = [row[:] for row in board]
-        if not solve_sudoku(board_copy):
+        # More strategic removal can be applied here by prioritizing specific positions
+        if count_solutions(board) != 1:
             board[row][col] = backup
-            attempts -= 1
         else:
-            solve_sudoku(board_copy)
-    return board
-# Hybrid Solver
-def hybrid_sudoku_solver(board):
-    # Step 1: Initial Constraint Propagation
-    constraint_propagation(board)
-    
-    # Step 2: Advanced Exact Cover with Dancing Links
-    if dancing_links_algorithm(board):
-        return True
-    
-    # Step 3: Stochastic Search Enhancements
-    if stochastic_search(board):
-        return True
-    
-    # Step 4: Backtracking with Optimizations
-    return backtracking_with_optimizations(board)
+            removed_positions.append((row, col))
+        
+        attempts += 1
 
-# Generate a complex Sudoku puzzle
-complete_board = generate_complete_board()
-sudoku_puzzle = remove_numbers_from_board(complete_board, difficulty_level=5)  # Adjust difficulty_level as needed
+    return board
+
+def print_board(board):
+    for row in board:
+        print(" ".join(str(num) if num != 0 else '.' for num in row))
+
+# Generate a complete and shuffled Sudoku board
+complete_board = generate_shuffled_board()
+
+print("Generated Complete Board:")
+print_board(complete_board)
+
+# Create a Sudoku puzzle by removing numbers
+difficulty_level = 64  # Adjust difficulty level as needed
+sudoku_puzzle = remove_numbers_from_board(complete_board, difficulty_level, max_attempts=500)
 
 print("Generated Sudoku Puzzle:")
 print_board(sudoku_puzzle)
@@ -82,4 +85,6 @@ if hybrid_sudoku_solver(sudoku_puzzle):
 else:
     print("No solution exists.")
 
+print("Solved Sudoku:")
 print_board(sudoku_puzzle)
+
