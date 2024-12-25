@@ -1,5 +1,7 @@
 import random
 
+from HybridSolver import backtracking_with_optimizations, constraint_propagation, dancing_links_algorithm, stochastic_search
+
 def is_valid(board, row, col, num):
     for i in range(9):
         if board[row][i] == num or board[i][col] == num:
@@ -11,6 +13,9 @@ def is_valid(board, row, col, num):
             if board[i][j] == num:
                 return False
     return True
+def print_board(board):
+    for row in board:
+        print(" ".join(str(num) if num != 0 else '.' for num in row))
 
 def solve_sudoku(board):
     for row in range(9):
